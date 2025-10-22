@@ -12,10 +12,31 @@ library(units)
 library(tibble)
 library(readr)
 
+# pass cluster array identifier to R
+iteration <- commandArgs(trailingOnly = TRUE)[1]
+
+
+# for local debugging, make iteration 1 if it is NA
+if(is.na(iteration)){
+  iteration <- 1
+}
+
+cat('iteration is', iteration, '\n')
+
 #LOAD RAW DATA ----
 #required raw datasets
 #farm polygons
 FLAME <- st_read('Raw_data/farm_base_with_geo/farm_base_with_geometry.shp')
+
+# set up the batch IDS for each array iteration
+
+n = 1000 # the number of array iterations
+batches <- split(FLAME$ID, sort(x%%n)) # a list 1000 items long, each consisting of a vector of IDs
+
+cat('IDs being used in this iteration are', batches[[iteration]], '\n')
+
+FLAME <- FLAME %>%
+  filter(ID %in% batches[[iteration]])
 #provisional agricultural land classification polygons
 soil <- st_read('Raw_data/Provisional Agricultural Land Classification (ALC) (England)_1909723263035822565.gpkg')
 #local nature recovery strategy area polygons
@@ -401,7 +422,14 @@ totals_crop_year <- totals_crop_year %>%
     .groups = "drop"
   )
 
-write.csv(totals_crop_year, "Processed_data/FLAME_total_crop_yields_2016_23.csv")
+
+total_path <- 'Processed_data/FLAME_total_crop_yields_2016_23'
+if(!dir.exists(total_path)){
+  dir.create(total_path)
+}
+
+write.csv(x = totals_crop_year, 
+          file = paste0(total_path, '/iteration_', iteration, '.csv'))
 
 #calculate average crop yield across the years
 avg_total_by_crop <- totals_crop_year %>%
@@ -415,7 +443,14 @@ avg_total_by_crop <- totals_crop_year %>%
   arrange(desc(mean_total_yield))
 
 #save crop yield dataset
-write.csv(avg_total_by_crop, "Processed_data/FLAME_avg_crop_yields_2016_23.csv")
+
+avg_path <- 'Processed_data/FLAME_avg_crop_yields_2016_23'
+if(!dir.exists(avg_path)){
+  dir.create(avg_path)
+}
+
+write.csv(x = avg_total_by_crop, 
+          file = paste0(avg_path, '/iteration_', iteration, '.csv'))
 
 #ADD LEAKAGE VALUES ----
 
@@ -485,45 +520,10 @@ per_farm_leakage <- per_farm_leakage %>%
   )
 
 #save per farm leakage dataset
-write.csv(per_farm_leakage, "Processed_data/leakage_per_farm_England.csv")
+leakage_path <- 'Processed_data/FLAME_leakage'
+if(!dir.exists(leakage_path)){
+  dir.create(leakage_path)
+}
 
-#AGGREGATION FOR ANALYSIS ----
-
-#calculate mean and standard error of leakage per km2 in each LUF type 
-#aggregated across whole country
-mean_se_by_lu <- per_farm_leakage %>%
-  mutate(dom_landuse = as.integer(as.character(dom_landuse))) %>%
-  group_by(dom_landuse) %>%
-  summarise(
-    mean_leak = mean(leak_per_km2, na.rm = TRUE),
-    sd_leak   = sd(leak_per_km2, na.rm = TRUE),
-    n_farms   = sum(!is.na(leak_per_km2)),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    se_leak = if_else(n_farms > 1, sd_leak / sqrt(n_farms), NA_real_),
-    dom_landuse = factor(dom_landuse, levels = 1:9)
-  ) %>%
-  arrange(as.integer(as.character(dom_landuse)))
-
-write.csv(mean_se_by_lu, "Processed_data/mean_leakage_by_lu.csv")
-
-#then do mean by LUF type within each county
-mean_se_by_lu_county <- per_farm_leakage %>%
-  mutate(dom_landuse = as.integer(as.character(dom_landuse))) %>%
-  group_by(dom_landuse, county_name) %>%
-  summarise(
-    mean_leak = mean(leak_per_km2, na.rm = TRUE),
-    sd_leak   = sd(leak_per_km2, na.rm = TRUE),
-    n_farms   = sum(!is.na(leak_per_km2)),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    mean_leak = ifelse(is.nan(mean_leak), NA_real_, mean_leak),
-    sd_leak   = ifelse(is.nan(sd_leak),   NA_real_, sd_leak),
-    se_leak = if_else(n_farms > 1, sd_leak / sqrt(n_farms), NA_real_),
-    dom_landuse = factor(dom_landuse, levels = 1:9)
-  ) %>%
-  arrange(as.integer(as.character(dom_landuse)))
-
-write.csv(mean_se_by_lu_county, "Processed_data/mean_leakage_by_lu_county.csv")
+write.csv(x = per_farm_leakage, 
+          file = paste0(leakage_path, '/iteration_', iteration, '.csv'))
