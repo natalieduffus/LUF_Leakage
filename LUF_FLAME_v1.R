@@ -59,6 +59,8 @@ yield_data <- read.csv(file = here('Raw_data', 'CropYields.csv'))
 #leakage values from ball dataset
 extinctions <- read.csv(file = here('Raw_data',' GBR_leakage.csv'))
 
+print('finished reading in memory')
+
 #DATA PREPARATION ----
 
 #calculate farm area in hectares and in metres-squared
@@ -172,7 +174,7 @@ FLAME$dom_landuse <- dom_landuse
 FLAME$dom_landuse_area_m2 <- dom_landuse_area_m2
 FLAME$dom_landuse_pct <- dom_landuse_pct
 
-
+print("appended land use pixel types")
 
 
 
@@ -231,6 +233,8 @@ for (i in seq_len(n)) {
 #append to FLAME dataset
 FLAME$county_name <- county_name
 FLAME$county_pct  <- county_pct
+
+print("appended lnrs area")
 #CROP AND SOIL TYPE CALCULATION ----
 
 #tidy up the dataset and remove useless columns
@@ -345,6 +349,7 @@ FLAME_crops <- bind_rows(FLAME_2016 %>% mutate(year = 2016),
                   .id = NULL) %>%
   dplyr::select(year, everything())
 
+print("soil and crop calculations done")
 
 #CROP YIELD CALCULATION ----
 
@@ -423,6 +428,8 @@ totals_crop_year <- totals_crop_year %>%
     total_yield = sum(total_yield),
     .groups = "drop"
   )
+
+print("yields calculated")
 
 
 total_path <- here('Processed_data', 'FLAME_total_crop_yields_2016_23')
@@ -521,6 +528,8 @@ per_farm_leakage <- per_farm_leakage %>%
     leak_per_km2 = total_leakage / area_km2
   )
 
+print("leakage appended")
+
 #save per farm leakage dataset
 leakage_path <- here('Processed_data', 'FLAME_leakage')
 if(!dir.exists(leakage_path)){
@@ -529,3 +538,5 @@ if(!dir.exists(leakage_path)){
 
 write.csv(x = per_farm_leakage, 
           file = paste0(leakage_path, '/iteration_', iteration, '.csv'))
+
+print("All done! Cheers :)")
