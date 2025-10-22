@@ -11,6 +11,7 @@ library(dplyr)
 library(units)
 library(tibble)
 library(readr)
+library(here)
 
 # pass cluster array identifier to R
 iteration <- commandArgs(trailingOnly = TRUE)[1]
@@ -26,7 +27,7 @@ cat('iteration is', iteration, '\n')
 #LOAD RAW DATA ----
 #required raw datasets
 #farm polygons
-FLAME <- st_read('Raw_data/farm_base_with_geo/farm_base_with_geometry.shp')
+FLAME <- st_read(here('Raw_data', 'farm_base_with_geo', 'farm_base_with_geometry.shp'))
 
 # set up the batch IDS for each array iteration
 
@@ -38,9 +39,9 @@ cat('IDs being used in this iteration are', batches[[iteration]], '\n')
 FLAME <- FLAME %>%
   filter(ID %in% batches[[iteration]])
 #provisional agricultural land classification polygons
-soil <- st_read('Raw_data/Provisional Agricultural Land Classification (ALC) (England)_1909723263035822565.gpkg')
+soil <- st_read(here('Raw_data', 'Provisional Agricultural Land Classification (ALC) (England)_1909723263035822565.gpkg'))
 #local nature recovery strategy area polygons
-LNRS_shapefiles <- st_read('Raw_data/Local_Nature_Recovery_Strategy_Areas_England.shp/Local_Nature_Recovery_Strategy_Areas_England.shp')
+LNRS_shapefiles <- st_read(here('Raw_data', 'Local_Nature_Recovery_Strategy_Areas_England.shp', 'Local_Nature_Recovery_Strategy_Areas_England.shp'))
 #crop datasets 2016-2023 - polygons
 crop_2016 <- st_read('Raw_data/lccm-2016_6040999.gpkg')
 crop_2017 <- st_read('Raw_data/lccm-2017_6041000.gpkg')
@@ -51,11 +52,11 @@ crop_2021 <- st_read('Raw_data/lccm-2021_6038560.gpkg')
 crop_2022 <- st_read('Raw_data/lccm-2022_6038561.gpkg')
 crop_2023 <- st_read('Raw_data/lccm-2023_6038562.gpkg')
 #land use framework pixel type polygons (1:9)
-LUF <- st_read('Raw_data/LUF_2010')
+LUF <- st_read(here('Raw_data', 'LUF_2010'))
 #john nix crop yields dataset
-yield_data <- read.csv(file = 'Raw_data/CropYields.csv')
+yield_data <- read.csv(file = here('Raw_data', 'CropYields.csv'))
 #leakage values from ball dataset
-extinctions <- read.csv(file = 'Raw_data/GBR_leakage.csv')
+extinctions <- read.csv(file = here('Raw_data',' GBR_leakage.csv'))
 
 #DATA PREPARATION ----
 
@@ -423,7 +424,7 @@ totals_crop_year <- totals_crop_year %>%
   )
 
 
-total_path <- 'Processed_data/FLAME_total_crop_yields_2016_23'
+total_path <- here('Processed_data', 'FLAME_total_crop_yields_2016_23')
 if(!dir.exists(total_path)){
   dir.create(total_path)
 }
@@ -444,7 +445,7 @@ avg_total_by_crop <- totals_crop_year %>%
 
 #save crop yield dataset
 
-avg_path <- 'Processed_data/FLAME_avg_crop_yields_2016_23'
+avg_path <- here('Processed_data', 'FLAME_avg_crop_yields_2016_23')
 if(!dir.exists(avg_path)){
   dir.create(avg_path)
 }
@@ -520,7 +521,7 @@ per_farm_leakage <- per_farm_leakage %>%
   )
 
 #save per farm leakage dataset
-leakage_path <- 'Processed_data/FLAME_leakage'
+leakage_path <- here('Processed_data', 'FLAME_leakage')
 if(!dir.exists(leakage_path)){
   dir.create(leakage_path)
 }
