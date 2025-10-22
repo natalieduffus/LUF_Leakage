@@ -57,7 +57,7 @@ LUF <- st_read(here('Raw_data', 'LUF_2010'))
 #john nix crop yields dataset
 yield_data <- read.csv(file = here('Raw_data', 'CropYields.csv'))
 #leakage values from ball dataset
-extinctions <- read.csv(file = here('Raw_data',' GBR_leakage.csv'))
+extinctions <- read.csv(file = here('Raw_data', 'GBR_leakage.csv'))
 
 print('finished reading in memory')
 
