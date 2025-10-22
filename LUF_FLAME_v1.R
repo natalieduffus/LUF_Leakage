@@ -32,7 +32,8 @@ FLAME <- st_read(here('Raw_data', 'farm_base_with_geo', 'farm_base_with_geometry
 # set up the batch IDS for each array iteration
 
 n = 1000 # the number of array iterations
-batches <- split(FLAME$ID, sort(FLAME$ID%%n)) # a list 1000 items long, each consisting of a vector of IDs
+x <- seq(1, nrow(FLAME))
+batches <- split(FLAME$ID, sort(x%%n)) # a list 1000 items long, each consisting of a vector of IDs
 
 cat('IDs being used in this iteration are', batches[[iteration]], '\n')
 
