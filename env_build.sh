@@ -31,4 +31,4 @@ conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/ma
 # and  r. The --yes flag confirms in advance that you want to install them, as 
 # otherwise conda assumes that you're working interactively and asks for you to confirm.
 
-conda install R r-sf r-tibble r-dplyr r-units r-readr -c conda-forge -c defaults -c r --yes
+conda install R r-sf r-here r-tibble r-dplyr r-units r-readr -c conda-forge -c defaults -c r --yes
