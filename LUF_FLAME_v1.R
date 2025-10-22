@@ -3,7 +3,7 @@
 #DATE CREATED: 20TH OCTOBER 2025
 #LAST EDITED: 20TH OCTOBER 2025
 
-setwd('/Users/user/Desktop/Projects/LUF_Leakage/Processed_data')
+#setwd('Processed_data')
 
 #REQUIRED PACKAGES ----
 library(sf)
@@ -15,26 +15,26 @@ library(readr)
 #LOAD RAW DATA ----
 #required raw datasets
 #farm polygons
-FLAME <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/farm_base_with_geo/farm_base_with_geometry.shp')
+FLAME <- st_read('Raw_data/farm_base_with_geo/farm_base_with_geometry.shp')
 #provisional agricultural land classification polygons
-soil <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/Provisional Agricultural Land Classification (ALC) (England)_1909723263035822565.gpkg')
+soil <- st_read('Raw_data/Provisional Agricultural Land Classification (ALC) (England)_1909723263035822565.gpkg')
 #local nature recovery strategy area polygons
-LNRS_shapefiles <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/Local_Nature_Recovery_Strategy_Areas_England.shp/Local_Nature_Recovery_Strategy_Areas_England.shp')
+LNRS_shapefiles <- st_read('Raw_data/Local_Nature_Recovery_Strategy_Areas_England.shp/Local_Nature_Recovery_Strategy_Areas_England.shp')
 #crop datasets 2016-2023 - polygons
-crop_2016 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2016_6040999.gpkg')
-crop_2017 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2017_6041000.gpkg')
-crop_2018 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2018_6040275.gpkg')
-crop_2019 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2019_6040276.gpkg')
-crop_2020 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2020_6040277.gpkg')
-crop_2021 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2021_6038560.gpkg')
-crop_2022 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2022_6038561.gpkg')
-crop_2023 <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/lccm-2023_6038562.gpkg')
+crop_2016 <- st_read('Raw_data/lccm-2016_6040999.gpkg')
+crop_2017 <- st_read('Raw_data/lccm-2017_6041000.gpkg')
+crop_2018 <- st_read('Raw_data/lccm-2018_6040275.gpkg')
+crop_2019 <- st_read('Raw_data/lccm-2019_6040276.gpkg')
+crop_2020 <- st_read('Raw_data/lccm-2020_6040277.gpkg')
+crop_2021 <- st_read('Raw_data/lccm-2021_6038560.gpkg')
+crop_2022 <- st_read('Raw_data/lccm-2022_6038561.gpkg')
+crop_2023 <- st_read('Raw_data/lccm-2023_6038562.gpkg')
 #land use framework pixel type polygons (1:9)
-LUF <- st_read('/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/LUF_2010')
+LUF <- st_read('Raw_data/LUF_2010')
 #john nix crop yields dataset
-yield_data <- read.csv(file = '/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/CropYields.csv')
+yield_data <- read.csv(file = 'Raw_data/CropYields.csv')
 #leakage values from ball dataset
-extinctions <- read.csv(file = '/Users/user/Desktop/Projects/LUF_Leakage/Raw_data/GBR_leakage.csv')
+extinctions <- read.csv(file = 'Raw_data/GBR_leakage.csv')
 
 #DATA PREPARATION ----
 
@@ -401,7 +401,7 @@ totals_crop_year <- totals_crop_year %>%
     .groups = "drop"
   )
 
-write.csv(totals_crop_year, "FLAME_total_crop_yields_2016_23.csv")
+write.csv(totals_crop_year, "Processed_data/FLAME_total_crop_yields_2016_23.csv")
 
 #calculate average crop yield across the years
 avg_total_by_crop <- totals_crop_year %>%
@@ -415,7 +415,7 @@ avg_total_by_crop <- totals_crop_year %>%
   arrange(desc(mean_total_yield))
 
 #save crop yield dataset
-write.csv(avg_total_by_crop, "FLAME_avg_crop_yields_2016_23.csv")
+write.csv(avg_total_by_crop, "Processed_data/FLAME_avg_crop_yields_2016_23.csv")
 
 #ADD LEAKAGE VALUES ----
 
@@ -485,7 +485,7 @@ per_farm_leakage <- per_farm_leakage %>%
   )
 
 #save per farm leakage dataset
-write.csv(per_farm_leakage, "leakage_per_farm_England.csv")
+write.csv(per_farm_leakage, "Processed_data/leakage_per_farm_England.csv")
 
 #AGGREGATION FOR ANALYSIS ----
 
@@ -506,7 +506,7 @@ mean_se_by_lu <- per_farm_leakage %>%
   ) %>%
   arrange(as.integer(as.character(dom_landuse)))
 
-write.csv(mean_se_by_lu, "mean_leakage_by_lu.csv")
+write.csv(mean_se_by_lu, "Processed_data/mean_leakage_by_lu.csv")
 
 #then do mean by LUF type within each county
 mean_se_by_lu_county <- per_farm_leakage %>%
@@ -526,4 +526,4 @@ mean_se_by_lu_county <- per_farm_leakage %>%
   ) %>%
   arrange(as.integer(as.character(dom_landuse)))
 
-write.csv(mean_se_by_lu_county, "mean_leakage_by_lu_county.csv")
+write.csv(mean_se_by_lu_county, "Processed_data/mean_leakage_by_lu_county.csv")
