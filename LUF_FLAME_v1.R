@@ -63,6 +63,9 @@ print('finished reading in memory')
 
 #DATA PREPARATION ----
 
+#if needed to sort out the FLAME geometry
+#FLAME <- sf::st_make_valid(FLAME)
+
 #calculate farm area in hectares and in metres-squared
 FLAME  <- FLAME  %>% mutate(farm_area_m2 = as.numeric(st_area(geometry)),
                             farm_area_ha = farm_area_m2 / 10000)
@@ -399,7 +402,7 @@ FLAME_yields <- FLAME_crops %>%
 
 #aggregate crop yields by farm, crop type, and LUF pixel type
 totals_crop_year <- FLAME_yields %>%
-  group_by(year, Crop, dom_landuse, ID) %>%
+  group_by(year, Crop, dom_landuse, ID, county_name) %>%
   summarise(total_yield = sum(total_yield, na.rm = TRUE), .groups = "drop") %>%
   arrange(year, Crop, dom_landuse, ID)
 
@@ -423,7 +426,7 @@ crop_map <- c(
 
 totals_crop_year <- totals_crop_year %>%
   mutate(Crop_group = recode(Crop, !!!crop_map)) %>%
-  group_by(year, Crop_group, dom_landuse, ID) %>%
+  group_by(year, Crop_group, dom_landuse, ID, county_name) %>%
   summarise(
     total_yield = sum(total_yield),
     .groups = "drop"
@@ -442,7 +445,7 @@ write.csv(x = totals_crop_year,
 
 #calculate average crop yield across the years
 avg_total_by_crop <- totals_crop_year %>%
-  group_by(Crop_group, dom_landuse, ID) %>%
+  group_by(Crop_group, dom_landuse, ID, county_name) %>%
   summarise(
     mean_total_yield = mean(total_yield, na.rm = TRUE),
     sd_total_yield   = sd(total_yield, na.rm = TRUE),
@@ -514,7 +517,7 @@ per_farm_leakage <- avg_total_by_crop %>%
 
 #add back in the farm area and land use pixel metadata
 farm_metadata <- FLAME_yields %>%
-  dplyr::select(ID, dom_landuse, Area.hec.) %>%  
+  dplyr::select(ID, dom_landuse, Area.hec., county_name) %>%  
   distinct(ID, .keep_all = TRUE)
 
 #convert area to km2
