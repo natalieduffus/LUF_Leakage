@@ -1058,3 +1058,56 @@ leak_density <- ggplot(combined_leak, aes(x = value)) +
 
 print(leak_density)
 
+
+#FLAME LUF ANALYSIS
+median_iqr_by_lu <- england_leakage_values %>%
+  mutate(dom_landuse = as.integer(as.character(dom_landuse))) %>% 
+  group_by(dom_landuse) %>%
+  summarise(
+    median_leak = median(leak_per_area, na.rm = TRUE),
+    q25 = quantile(leak_per_area, 0.25, na.rm = TRUE),
+    q75 = quantile(leak_per_area, 0.75, na.rm = TRUE),
+    n_farms = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(dom_landuse) %>%
+  mutate(dom_landuse = factor(dom_landuse, levels = 1:9)) 
+
+
+LUF_colours <- c("#3A7050", "#4D9C59", "#5FCB63","#AFDDB7", "#F0EBFF", "#C2B3E8", "#967FD3", "#6A7898", "#8BABA9")
+
+p_median <- ggplot(median_iqr_by_lu, aes(x = dom_landuse, y = median_leak, fill = dom_landuse)) +
+  geom_col() +
+  geom_point(aes(y = median_leak), size = 2, shape = 21, colour = "black", fill = "white") +
+  coord_flip() +
+  scale_fill_manual(values = LUF_colours) +
+  labs(
+    x = "LUF cell type",
+    y = "Median Leakage",
+    title = ""
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+print(p_median)
+
+england_leakage_values <- england_leakage_values %>%
+  mutate(dom_landuse = factor(as.integer(as.character(dom_landuse)), levels = 1:9))
+
+LUF_colours <- c("#3A7050", "#4D9C59", "#5FCB63","#AFDDB7", "#F0EBFF", "#C2B3E8", "#967FD3", "#6A7898", "#8BABA9")
+
+p_box <- ggplot(england_leakage_values, aes(x = dom_landuse, y = leak_per_area, fill = dom_landuse)) +
+  geom_boxplot(outlier.shape = NA, width = 0.7, coef = 1.5) +
+  geom_jitter(width = 0.15, alpha = 0.05, size = 0.5) +  
+  stat_summary(fun = median, geom = "point", shape = 21, size = 2.5, colour = "black", fill = "white") +
+  coord_flip() +
+  scale_fill_manual(values = LUF_colours) +
+  labs(
+    x = "LUF cell type",
+    y = "median change in expected extinctions per km2",
+    title = "",
+    subtitle = paste0("n total = ", nrow(england_leakage_values))
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+
+print(p_box)
