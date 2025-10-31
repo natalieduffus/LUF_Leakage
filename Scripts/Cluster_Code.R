@@ -37,7 +37,7 @@ soil <- st_read(here('Raw_data', 'Provisional Agricultural Land Classification (
 #local nature recovery strategy area polygons
 LNRS_shapefiles <- st_read(here('Raw_data', 'Local_Nature_Recovery_Strategy_Areas_England.shp', 'Local_Nature_Recovery_Strategy_Areas_England.shp'))
 #crop datasets 2016-2023 - polygons
-crop_2016 <- st_read(here( 'Raw_data', 'lccm-2016_6040999.gpkg'))
+crop_2016 <- st_read(here('Raw_data', 'lccm-2016_6040999.gpkg'))
 crop_2017 <- st_read(here('Raw_data', 'lccm-2017_6041000.gpkg'))
 crop_2018 <- st_read(here('Raw_data', 'lccm-2018_6040275.gpkg'))
 crop_2019 <- st_read(here('Raw_data', 'lccm-2019_6040276.gpkg'))
