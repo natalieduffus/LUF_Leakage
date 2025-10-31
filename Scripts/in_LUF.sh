@@ -18,4 +18,4 @@ export CONPREFIX=$DATA/conda_envs/nats_modelling
 # activate your new conda environment
 source activate $CONPREFIX
 
-Rscript Cluser_Code.R ${SLURM_ARRAY_TASK_ID}
+Rscript Cluster_Code.R ${SLURM_ARRAY_TASK_ID}
