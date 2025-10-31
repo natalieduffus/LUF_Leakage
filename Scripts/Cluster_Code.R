@@ -530,7 +530,7 @@ per_farm_leakage <- per_farm_leakage %>%
 
 
 # add back in the farm area and land use pixel metadata
-farm_metadata <- england_leakage_values %>%
+farm_metadata <- FLAME_tidy %>%
   dplyr::select(ID, dom_landuse, Area.hec., county_name) %>%  
   distinct(ID, .keep_all = TRUE)
 
