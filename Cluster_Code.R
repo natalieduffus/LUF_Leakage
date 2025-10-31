@@ -1,22 +1,9 @@
-#CREATING CROP YIELD AND LEAKAGE ESTIMATES FROM FLAME DATASET
-#AUTHOR: NATALIE ELIZABETH DUFFUS
-#DATE CREATED: 20TH OCTOBER 2025
-#LAST EDITED: 24TH OCTOBER 2025
-
-#REQUIRED PACKAGES ----
 library(sf)
 library(dplyr)
 library(units)
 library(tibble)
 library(readr)
 library(here)
-library(terra)
-library(raster)
-library(geomdata)
-library(tidyr)
-library(tidyverse)
-library(exactextractr)
-library(ggplot2)
 
 #define iterations for running code in HPC
 # pass cluster array identifier to R
@@ -64,17 +51,7 @@ LUF <- st_read(here('Raw_data', 'LUF_2010'))
 yield_data <- read.csv(file = here('Raw_data', 'CropYields.csv'))
 #leakage values from ball dataset
 extinctions <- read.csv(file = here('Raw_data', 'GBR_leakage.csv'))
-#life restoration layer
-life <- rast('Raw_data/normalised_v6.tif')
-#offsets polygons
-offsets <- st_read('Raw_data/offsets_1808/offsetsBGS1808.shp')
 
-print('finished reading in memory')
-
-#DATA PREPARATION ----
-
-#if needed to sort out the FLAME geometry
-#FLAME <- sf::st_make_valid(FLAME)
 
 #calculate farm area in hectares and in metres-squared
 FLAME  <- FLAME  %>% mutate(farm_area_m2 = as.numeric(st_area(geometry)),
@@ -106,20 +83,6 @@ second_map <- c(
 
 extinctions <- extinctions %>%
   mutate(Crop_group = recode(Crop_group, !!!second_map))
-
-#trim life layer to england boundary
-
-uk <- geodata::gadm(country = "GBR", level = 1, path = tempdir())
-
-levels(uk$NAME_1)
-england <- na_rows
-
-life_eng <- crop(life, england)
-life_eng <- mask(life_eng, england)
-
-writeRaster(life_eng, "Processed_data/life_raster_england.tif", overwrite = TRUE)
-life <- rast('Processed_data/life_raster_england.tif')
-
 
 #FLAME APPEND LUF VALUES ----
 #append the LUF pixel type to the FLAME dataset to enable future analysis
@@ -328,7 +291,7 @@ process_crop <- function(crop_sf, crop_name_field = "crop_name", ps_obj, chunk_s
     results[[block_i]] <- dplyr::bind_rows(areas_block[!vapply(areas_block, is.null, logical(1))])
     block_i <- block_i + 1
   }
-
+  
   inter_tbl <- dplyr::bind_rows(results)
   if (nrow(inter_tbl) == 0)
     return(tibble::tibble(ID = integer(0), ALC_GRADE = character(0), crop_name = character(0), area_ha = numeric(0)))
@@ -366,14 +329,14 @@ FLAME_2022 <- sf::st_drop_geometry(FLAME_2022)
 FLAME_2023 <- sf::st_drop_geometry(FLAME_2023)
 
 FLAME_crops <- bind_rows(FLAME_2016 %>% mutate(year = 2016),
-                  FLAME_2017 %>% mutate(year = 2017),
-                  FLAME_2018 %>% mutate(year = 2018),
-                  FLAME_2019 %>% mutate(year = 2019),
-                  FLAME_2020 %>% mutate(year = 2020),
-                  FLAME_2021 %>% mutate(year = 2021),
-                  FLAME_2022 %>% mutate(year = 2022),
-                  FLAME_2023 %>% mutate(year = 2023),
-                  .id = NULL) %>%
+                         FLAME_2017 %>% mutate(year = 2017),
+                         FLAME_2018 %>% mutate(year = 2018),
+                         FLAME_2019 %>% mutate(year = 2019),
+                         FLAME_2020 %>% mutate(year = 2020),
+                         FLAME_2021 %>% mutate(year = 2021),
+                         FLAME_2022 %>% mutate(year = 2022),
+                         FLAME_2023 %>% mutate(year = 2023),
+                         .id = NULL) %>%
   dplyr::select(year, everything())
 
 print("soil and crop calculations done")
@@ -462,7 +425,6 @@ totals_crop_year <- totals_crop_year %>%
 
 print("yields calculated")
 
-
 total_path <- here('Processed_data', 'FLAME_total_crop_yields_2016_23')
 if(!dir.exists(total_path)){
   dir.create(total_path)
@@ -495,7 +457,6 @@ if(!dir.exists(avg_path)){
 write.csv(x = avg_total_by_crop, 
           file = paste0(avg_path, '/iteration_', iteration, '.csv'))
 
-avg_total_by_crop <- read.csv('Results/england_crop_avg_2310.csv')
 #FLAME LEAKAGE LOSS VALUES ----
 
 #calculate the leakage value per 1kg of displaced crop so that it can be
@@ -593,547 +554,5 @@ if(!dir.exists(leakage_path)){
 
 write.csv(x = per_farm_leakage, 
           file = paste0(leakage_path, '/iteration_', iteration, '.csv'))
-write.csv(per_farm_leakage, 'Results/england_leakage_2410.csv')
 
 print("All done! Cheers :)")
-
-#FLAME COMBINING DATASETS ----
-
-#if running code in iterations on the high performance computing cluster, need to build datasets out of the
-#1000 iterations
-
-leakage_files <- list.files(path = here('Processed_data', 'FLAME_leakage'),
-                            pattern = "\\.csv$",
-                            full.names = TRUE)
-
-leakage_list <- map(leakage_files, ~ read_csv(.x, col_types = cols(.default = "c"), na = c("", "NA", "n/a")) %>%
-                      mutate(iteration = basename(.x)))
-
-england_leakage_values <- bind_rows(leakage_list)
-
-england_leakage_values <- england_leakage_values %>%
-  mutate(
-    ...1 = as.integer(...1),
-    ID = as.character(ID),
-    total_leakage = as.numeric(total_leakage),
-    dom_landuse   = as.integer(dom_landuse),
-    `Area.hec.`   = as.numeric(`Area.hec.`),
-    area_km2      = as.numeric(area_km2),
-    leak_per_km2  = as.numeric(leak_per_km2),
-    county_name   = as.character(county_name)
-  )
-
-write.csv(england_leakage_values, here('Results', 'england_leakage_2310.csv'))
-
-crop_t_files <- list.files(path = here('Processed_data', 'FLAME_total_crop_yields_2016_23'),
-                           pattern = "\\.csv$",
-                           full.names = TRUE)
-
-crop_t_list <- map(crop_t_files, ~ read_csv(.x, col_types = cols(.default = "c"), na = c("", "NA", "n/a")) %>%
-                     mutate(iteration = basename(.x)))
-
-england_crop_t_values <- bind_rows(crop_t_list)
-
-england_crop_t_values <- england_crop_t_values %>%
-  mutate(
-    ...1 = as.integer(...1),
-    ID = as.character(ID),
-    year = as.numeric(year),
-    dom_landuse   = as.integer(dom_landuse),
-    Crop_group   = as.character(Crop_group),
-    total_yield     = as.numeric(total_yield),
-    county_name   = as.character(county_name)
-  )
-
-write.csv(england_crop_t_values, here('Results', 'england_crop_totals_2310.csv'))
-
-crop_avg_files <- list.files(path = here('Processed_data', 'FLAME_avg_crop_yields_2016_23'),
-                             pattern = "\\.csv$",
-                             full.names = TRUE)
-
-crop_avg_list <- map(crop_avg_files, ~ read_csv(.x, col_types = cols(.default = "c"), na = c("", "NA", "n/a")) %>%
-                       mutate(iteration = basename(.x)))
-
-england_crop_avg_values <- bind_rows(crop_avg_list)
-
-england_crop_avg_values <- england_crop_avg_values %>%
-  mutate(
-    ...1 = as.integer(...1),
-    ID = as.character(ID),
-    dom_landuse   = as.integer(dom_landuse),
-    Crop_group   = as.character(Crop_group),
-    mean_total_yield     = as.numeric(mean_total_yield),
-    sd_total_yield     = as.numeric(sd_total_yield),
-    se_total_yield     = as.numeric(se_total_yield),
-    n_years     = as.integer(n_years),
-    county_name   = as.character(county_name)
-  )
-
-write.csv(england_crop_avg_values, here('Results', 'england_crop_avg_2310.csv'))
-
-
-
-#FLAME RESTORATION VALUES ----
-
-#need to get the mean restoration value for each farm from the life layer
-terra::crs(life) <- "EPSG:27700"
-life <- raster::raster(life)
-
-
-flame_restore_stats <- exact_extract(
-  life,
-  FLAME,
-  fun = c("mean", "median"),
-  append_cols = "ID"
-)
-
-#FLAME NET LEAKAGE VALUES ----
-
-#now need to add together the loss and restoration values to get the net leakage values
-england_leakage_values <- read.csv('Results/england_leakage_2410.csv')
-
-england_leakage_values <- england_leakage_values %>% mutate(ID = as.character(ID))
-flame_restore_stats <- flame_restore_stats %>% mutate(ID = as.character(ID))
-
-england_leakage_values <- england_leakage_values %>%
-  left_join(
-    flame_restore_stats %>% dplyr::select(ID, mean, median),
-    by = "ID"
-  )
-
-#convert restoration values into a negative number as these are 'avoided extinctions'
-england_leakage_values$mean <- -abs(england_leakage_values$mean)
-
-#get net extinctions by adding together the values for leakage and restoration
-england_leakage_values$net_extinctions <- england_leakage_values$total_leakage
-                                    + england_leakage_values$mean
-
-england_leakage_values$leak_per_area <- england_leakage_values$net_extinctions/
-                        england_leakage_values$area_km2
-
-#tidy up dataset
-england_leakage_values <- england_leakage_values %>%
-  dplyr::select(ID,
-                Area.hec.,
-                dom_landuse,
-                county_name,
-                area_km2,
-                net_extinctions,
-                leak_per_area) 
-
-write.csv(england_leakage_values, 'Results/enland_net_leakage_2410.csv')
-
-#FLAME ANALYSIS ----
-
-summary(england_leakage_values$leak_per_area)
-
-hist(england_leakage_values$scaled_leak_per_area, breaks = 50, main = "Distribution", xlab = "change in extinctions per km2")
-
-#lots of really small values, going to scale the data up to make it easier to handle
-
-england_leakage_values$scaled_leak_per_area <- england_leakage_values$leak_per_area *10000
-
-#OFFSET CROP YIELDS ----
-#need to calculate the same values for offsets and bring them into the analysis
-offsets$id <- 1:nrow(offsets)
-
-#add offset areas
-offsets <- offsets %>%
-  mutate(
-    area_m2  = as.numeric(st_area(geometry)),
-    area_ha  = area_m2 / 10000,                
-    area_km2 = area_m2 / 1e6   
-  )
-
-#ALC and offset intersection
-ps <- st_intersection(
-  offsets |> dplyr::select(id),
-  soil |> dplyr::select(ALC_GRADE)
-)
-
-#2016 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2016 |> dplyr::select(crop_name)
-)
-
-result_2016 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2017 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2017 |> dplyr::select(crop_name)
-)
-
-result_2017 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2018 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2018 |> dplyr::select(crop_name)
-)
-
-result_2018 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2019 crop types
-
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2019 |> dplyr::select(crop_name)
-)
-
-result_2019 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2020 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2020 |> dplyr::select(crop_name)
-)
-result_2020 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2021 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2021 |> dplyr::select(crop_name)
-)
-
-result_2021 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2022 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2022 |> dplyr::select(crop_name)
-)
-
-result_2022 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#2023 crop types
-psp <- st_intersection(
-  ps |> dplyr::select(id, ALC_GRADE),
-  crop_2023 |> dplyr::select(crop_name)
-)
-
-result_2023 <- psp |>
-  mutate(area_ha = set_units(st_area(geometry), ha)) |>
-  mutate(area_ha = as.numeric(area_ha)) |>
-  filter(area_ha > 0) |>
-  group_by(id, ALC_GRADE, crop_name) |>
-  summarise(
-    area_ha = sum(area_ha),
-    .groups = "drop"
-  ) |>
-  arrange(id, desc(area_ha))
-
-#bind results together
-
-result_2016 <- sf::st_drop_geometry(result_2016)
-result_2017 <- sf::st_drop_geometry(result_2017)
-result_2018 <- sf::st_drop_geometry(result_2018)
-result_2019 <- sf::st_drop_geometry(result_2019)
-result_2020 <- sf::st_drop_geometry(result_2020)
-result_2021 <- sf::st_drop_geometry(result_2021)
-result_2022 <- sf::st_drop_geometry(result_2022)
-result_2023 <- sf::st_drop_geometry(result_2023)
-
-years <- 2016:2023
-long <- bind_rows(mget(paste0("result_", years)), .id = "src") %>%
-  mutate(year = as.integer(sub("^result_", "", src))) %>%
-  dplyr::select(year, everything(), -src)
-
-write.csv(long, "crop_data_2016_2023.csv")
-offset_yields <- read.csv('Processed_data/crop_data_2016_2023.csv')
-
-#add yield data
-offset_yields$crop_name <- tolower(offset_yields$crop_name)
-
-offset_yields <- offset_yields %>% 
-  rename(Crop = crop_name)
-
-offset_yields <- offset_yields %>% filter(Crop != "grass")
-#exclude solar panels
-offset_yields <- offset_yields %>% filter(Crop != "solar panels")
-
-#remove very small areas where there have obviously been snipping errors
-offset_yields <- offset_yields %>% filter(area_ha >= 0.1)
-
-#convert areas into km2
-
-offset_yields <- offset_yields %>%
-  mutate(area_km2 = area_ha * 0.01)
-
-offset_yields$crop_name <- tolower(offset_yields$crop_name)
-
-offset_yields <- offset_yields %>% 
-  rename(Crop = crop_name)
-
-offset_yields <- offset_yields %>%
-  mutate(Crop = gsub("winter wheat \\(includes winter oats\\)", "winter wheat", Crop))
-
-offset_data_w_yields <- offset_yields %>%
-  left_join(yield_data, by = "Crop") %>%
-  mutate(
-    yield_per_km2 = case_when(
-      ALC_GRADE %in% c("Grade 4", "Urban") ~ LowProd_km2,
-      ALC_GRADE %in% c("Grade 2", "Grade 3", "Non Agricultural") ~ AvgProd_km2,
-      ALC_GRADE == "Grade 1" ~ HighProd_km2
-    ),
-    total_yield = yield_per_km2 * area_km2
-  )
-
-write.csv(offset_data_w_yields, 'Processed_data/offset_crop_yields_2410.csv')
-offset_data_w_yields <- read.csv('Processed_data/offset_crop_yields_2410.csv')
-
-offsets_totals_crop_year <- offset_data_w_yields %>%
-  group_by(id, year, Crop) %>%
-  summarise(total_yield = sum(total_yield, na.rm = TRUE), .groups = "drop") %>%
-  arrange(id, year, Crop)
-
-#group crops of the same type
-offsets_totals_crop_year <- offsets_totals_crop_year %>%
-  mutate(Crop_group = recode(Crop, !!!crop_map)) %>%
-  group_by(id, year, Crop_group) %>%
-  summarise(
-    total_yield = sum(total_yield),
-    .groups = "drop"
-  )
-
-#average crop yields across years to get average annual production 
-
-offset_avg_total_by_crop <- offsets_totals_crop_year %>%
-  group_by(id, Crop_group) %>%
-  summarise(
-    mean_total_yield = mean(total_yield, na.rm = TRUE),
-    sd_total_yield   = sd(total_yield, na.rm = TRUE),
-    n_years          = n_distinct(year),
-    se_total_yield   = sd_total_yield / sqrt(n_years)
-  ) %>%
-  arrange(desc(mean_total_yield))
-
-
-#OFFSET LEAKAGE LOSS VALUES ----
-
-offset_avg_total_by_crop <- offset_avg_total_by_crop %>% filter(Crop_group != "other crops")
-offset_avg_total_by_crop <- offset_avg_total_by_crop %>% filter(Crop_group !="beet (sugar beet / fodder beet)")
-
-offset_avg_total_by_crop <- offset_avg_total_by_crop %>% 
-  left_join(net_leak_perkg, by = "Crop_group") %>%
-  mutate(
-    total_leak = net_leak * mean_total_yield
-  )
-
-# calculate total leakage per offset
-per_offset_leakage <- offset_avg_total_by_crop %>%
-  group_by(id) %>%
-  summarise(
-    total_leakage = sum(total_leak, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# add back in the metadata
-offset_metadata <- offsets %>%
-  dplyr::select(id, GainSite, area_km2, area_ha) %>%  
-  distinct(id, .keep_all = TRUE)
-
-per_offset_leakage <- per_offset_leakage %>%
-  left_join(offset_metadata, by = "id") %>%
-  mutate(
-    leak_per_area = total_leakage / area_km2
-  )
-
-per_offset_leakage <- sf::st_drop_geometry(per_offset_leakage)
-
-
-
-
-#OFFSET RESTORATION VALUES ----
-
-#need to get the mean restoration value for each farm from the life layer
-terra::crs(life) <- "EPSG:27700"
-life <- raster::raster(life)
-
-offset_restore_stats <- exact_extract(
-  life,
-  offsets,
-  fun = c("mean", "median"),
-  append_cols = "id"
-)
-
-per_offset_leakage <- per_offset_leakage %>% mutate(id = as.character(id))
-offset_restore_stats <- offset_restore_stats %>% mutate(id = as.character(id))
-
-offset_net_leakage <- per_offset_leakage %>%
-  left_join(
-    offset_restore_stats %>% dplyr::select(id, mean, median),
-    by = "id"
-  )
-
-#convert restoration values into a negative number as these are 'avoided extinctions'
-offset_net_leakage$mean <- -abs(offset_net_leakage$mean)
-
-#get net extinctions by adding together the values for leakage and restoration
-offset_net_leakage$net_extinctions <- offset_net_leakage$total_leakage
-+ offset_net_leakage$mean
-
-offset_net_leakage$leak_per_area <- offset_net_leakage$net_extinctions/
-  offset_net_leakage$area_km2
-
-#tidy up dataset
-
-offset_net_leakage <- sf::st_drop_geometry(offset_net_leakage)
-
-
-offset_net_leakage <- offset_net_leakage %>%
-  dplyr::select(id,
-                GainSite,
-                area_km2,
-                area_ha,
-                area_km2,
-                net_extinctions,
-                leak_per_area,
-                total_leakage,
-                mean,
-                median) 
-
-write.csv(offset_net_leakage, 'Results/offsets_net_leakage_2410.csv')
-
-
-#OFFSET ANALYSIS ----
-hist(offset_net_leakage$scaled_leak_per_area, breaks = 50, main = "Distribution", xlab = "change in extinctions per km2")
-
-#lots of really small values, going to scale the data up to make it easier to handle
-
-offset_net_leakage$scaled_leak_per_area <- offset_net_leakage$leak_per_area *10000
-#OFFSET AND FLAME SIDE BY SIDE ----
-
-#need to combine leak per area
-
-combined_leak <- bind_rows(
-  farms  = tibble(value = england_leakage_values$scaled_leak_per_area),
-  offsets = tibble(value = offset_net_leakage$scaled_leak_per_area),
-  .id = "source"
-)
-
-leak_density <- ggplot(combined_leak, aes(x = value)) +
-  geom_density(fill = "pink", alpha = 0.6) +
-  facet_wrap(~ source, nrow = 1, scales = "fixed") +
-  labs(x = "Increased extinction risk per km2 (x10,000)", y = "Density") +
-  theme_minimal()
-
-print(leak_density)
-
-
-#FLAME LUF ANALYSIS
-median_iqr_by_lu <- england_leakage_values %>%
-  mutate(dom_landuse = as.integer(as.character(dom_landuse))) %>% 
-  group_by(dom_landuse) %>%
-  summarise(
-    median_leak = median(leak_per_area, na.rm = TRUE),
-    q25 = quantile(leak_per_area, 0.25, na.rm = TRUE),
-    q75 = quantile(leak_per_area, 0.75, na.rm = TRUE),
-    n_farms = n(),
-    .groups = "drop"
-  ) %>%
-  arrange(dom_landuse) %>%
-  mutate(dom_landuse = factor(dom_landuse, levels = 1:9)) 
-
-
-LUF_colours <- c("#3A7050", "#4D9C59", "#5FCB63","#AFDDB7", "#F0EBFF", "#C2B3E8", "#967FD3", "#6A7898", "#8BABA9")
-
-p_median <- ggplot(median_iqr_by_lu, aes(x = dom_landuse, y = median_leak, fill = dom_landuse)) +
-  geom_col() +
-  geom_point(aes(y = median_leak), size = 2, shape = 21, colour = "black", fill = "white") +
-  coord_flip() +
-  scale_fill_manual(values = LUF_colours) +
-  labs(
-    x = "LUF cell type",
-    y = "Median Leakage",
-    title = ""
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(legend.position = "none")
-print(p_median)
-
-england_leakage_values <- england_leakage_values %>%
-  mutate(dom_landuse = factor(as.integer(as.character(dom_landuse)), levels = 1:9))
-
-LUF_colours <- c("#3A7050", "#4D9C59", "#5FCB63","#AFDDB7", "#F0EBFF", "#C2B3E8", "#967FD3", "#6A7898", "#8BABA9")
-
-p_box <- ggplot(england_leakage_values, aes(x = dom_landuse, y = leak_per_area, fill = dom_landuse)) +
-  geom_boxplot(outlier.shape = NA, width = 0.7, coef = 1.5) +
-  geom_jitter(width = 0.15, alpha = 0.05, size = 0.5) +  
-  stat_summary(fun = median, geom = "point", shape = 21, size = 2.5, colour = "black", fill = "white") +
-  coord_flip() +
-  scale_fill_manual(values = LUF_colours) +
-  labs(
-    x = "LUF cell type",
-    y = "median change in expected extinctions per km2",
-    title = "",
-    subtitle = paste0("n total = ", nrow(england_leakage_values))
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(legend.position = "none")
-
-print(p_box)
