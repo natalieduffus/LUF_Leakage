@@ -380,7 +380,7 @@ FLAME_yields <- FLAME_crops %>%
   left_join(yield_data, by = "Crop") %>%
   mutate(
     yield_per_km2 = case_when(
-      ALC_GRADE %in% c("Grade 4", "Urban") ~ LowProd_km2,
+      ALC_GRADE %in% c("Grade 4","Grade 5", "Urban") ~ LowProd_km2,
       ALC_GRADE %in% c("Grade 2", "Grade 3", "Non Agricultural") ~ AvgProd_km2,
       ALC_GRADE == "Grade 1" ~ HighProd_km2
     ),
@@ -527,7 +527,6 @@ per_farm_leakage <- per_farm_leakage %>%
                                         total_leakage / total_crop_area_km2,
                                         NA_real_)
   )
-
 
 # add back in the farm area and land use pixel metadata
 farm_metadata <- FLAME_tidy %>%
